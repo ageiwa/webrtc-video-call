@@ -1,22 +1,37 @@
-const WebSocketServer = require('websocket').server
-const http = require('http')
+const WebScoket = require('ws')
+const wss = new WebScoket.Server({ port: 3000 })
+const users = []
 
-const server = http.createServer((request, response) => {
+wss.on('connection', (ws) => {
+    const id = Math.random()
 
-})
-server.listen(1337, () => console.log('Сервер запущен'))
+    connectUser(id, ws)
 
-const wsServer = new WebSocketServer({
-    httpServer: server
-})
+    ws.on('message', msg => {
+        const data = JSON.parse(msg)
 
-wsServer.on('request', function(request) {
-    const connection = request.accept(null, request.origin)
+        console.log(data)
 
-    connection.on('message', msg => {
-        const self = JSON.parse(msg.utf8Data)
-        connection.send(self)
-
-        console.log(self)
+        const watcher = users.find(user => user.id !== data.userId)
+        watcher.socket.send(JSON.stringify(data))
     })
+
+    ws.on('close', msg => disconnectUser(id))
 })
+
+function connectUser(id, ws) {
+    const user = {
+        id: id,
+        name: 'user ' + id,
+        socket: ws
+    }
+
+    users.push(user)
+
+    ws.send(JSON.stringify({id: user.id, name: user.name, type: 'login'}))
+}
+
+function disconnectUser(id) {
+    const index = users.findIndex(user => user.id === id)
+    users.splice(index, 1)
+}
